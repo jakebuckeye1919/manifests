@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 
 # This script aims at helping create a PR to update the manifests of the
-# contrib/seldon repo.
+# kubeflow/model-registry repository.
 # This script:
 # 1. Checks out a new branch
 # 2. Copies files to the correct places
 # 3. Commits the changes
 #
 # Afterwards the developers can submit the PR to the kubeflow/manifests
-# repo, based on that local branch
+# repository, based on that local branch
 # It must be executed directly from its directory
 
 # strict mode http://redsymbol.net/articles/unofficial-bash-strict-mode/
 set -euxo pipefail
 IFS=$'\n\t'
 
-COMMIT="v1.18.1" # You can use tags as well
-SRC_DIR=${SRC_DIR:=/tmp/seldon}
-BRANCH=${BRANCH:=sync-seldon-core-manifests-${COMMIT?}}
-UPDATE_ECHO_MODEL=false
+COMMIT="v0.2.1-alpha" # You can use tags as well
+DEV_MODE=${DEV_MODE:=false}
+SRC_DIR=${SRC_DIR:=/tmp/kubeflow-model-registry}
+BRANCH=${BRANCH:=synchronize-kubeflow-model-registry-manifests-${COMMIT?}}
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 MANIFESTS_DIR=$(dirname $SCRIPT_DIR)
@@ -28,6 +28,7 @@ echo "Creating branch: ${BRANCH}"
 if [ -n "$(git status --porcelain)" ]; then
   echo "WARNING: You have uncommitted changes"
 fi
+
 if [ `git branch --list $BRANCH` ]
 then
    echo "WARNING: Branch $BRANCH already exists."
@@ -41,48 +42,41 @@ else
 fi
 echo "Checking out in $SRC_DIR to $COMMIT..."
 
-# Checkout the Seldon repository
+# Checkout the Model Registry repository
 mkdir -p $SRC_DIR
 cd $SRC_DIR
-if [ ! -d "seldon-core/.git" ]; then
-    git clone https://github.com/SeldonIO/seldon-core.git
+if [ ! -d "model-registry/.git" ]; then
+    git clone https://github.com/kubeflow/model-registry.git
 fi
-cd $SRC_DIR/seldon-core
+cd $SRC_DIR/model-registry
 if ! git rev-parse --verify --quiet $COMMIT; then
     git checkout -b $COMMIT
 else
     git checkout $COMMIT
 fi
 
-
 if [ -n "$(git status --porcelain)" ]; then
   echo "WARNING: You have uncommitted changes"
 fi
 
-echo "Updating seldon manifests..."
-DST_DIR=$MANIFESTS_DIR/contrib/seldon
-
-cd $DST_DIR
-SRC_TXT="SELDON_VERSION ?= .*"
-DST_TXT="SELDON_VERSION ?= ${COMMIT:1}"
-sed -i "s|$SRC_TXT|$DST_TXT|g" ${DST_DIR}/Makefile
-# Update manifests
-SELDON_OPERATOR_CHART="$SRC_DIR/seldon-core/helm-charts/seldon-core-operator" make seldon-core-operator/base
-
-echo "Successfully updated all manifests."
-
-if [ "$UPDATE_ECHO_MODEL" = "true" ]; then
-    echo "Updating seldonio/echo-model version..."
-    SRC_TXT="seldonio/echo-model:[0-9]\+\.[0-9]\+\.[0-9]\+"
-    DST_TXT="seldonio/echo-model:${COMMIT:1}"
-    sed -i "s|$SRC_TXT|$DST_TXT|g" ${DST_DIR}/README.md
-    sed -i "s|$SRC_TXT|$DST_TXT|g" ${DST_DIR}/example.yaml
-    echo "Successfully updated seldonio/echo-model."
+echo "Copying model-registry manifests..."
+DST_DIR=$MANIFESTS_DIR/apps/model-registry/upstream
+if [ -d "$DST_DIR" ]; then
+    rm -r "$DST_DIR"
 fi
+mkdir -p $DST_DIR
+cp $SRC_DIR/model-registry/manifests/kustomize/* $DST_DIR -r
 
+echo "Successfully copied all manifests."
+
+echo "Updating README..."
+SRC_TXT="\[.*\](https://github.com/kubeflow/model-registry/tree/.*/manifests/kustomize)"
+DST_TXT="\[$COMMIT\](https://github.com/kubeflow/model-registry/tree/$COMMIT/manifests/kustomize)"
+
+sed -i "s|$SRC_TXT|$DST_TXT|g" ${MANIFESTS_DIR}/README.md
 
 echo "Committing the changes..."
 cd $MANIFESTS_DIR
-git add contrib/seldon
+git add apps
 git add README.md
-git commit -s -m "Update seldon manifests from ${COMMIT}"
+git commit -s -m "Update kubeflow/model-registry manifests from ${COMMIT}"

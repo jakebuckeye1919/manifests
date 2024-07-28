@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 # This script aims at helping create a PR to update the manifests of the
-# kserve/kserve repo.
+# kserve/kserve repository.
 # This script:
 # 1. Checks out a new branch
 # 2. Copies files to the correct places
 # 3. Commits the changes
 #
 # Afterwards the developers can submit the PR to the kubeflow/manifests
-# repo, based on that local branch
+# repository, based on that local branch
 # It must be executed directly from its directory
 
 # strict mode http://redsymbol.net/articles/unofficial-bash-strict-mode/
@@ -18,7 +18,7 @@ IFS=$'\n\t'
 KSERVE_VERSION="v0.13.0"
 COMMIT="0.13.0" # You can use tags as well
 SRC_DIR=${SRC_DIR:=/tmp/kserve}
-BRANCH=${BRANCH:=sync-kserve-manifests-${COMMIT?}}
+BRANCH=${BRANCH:=synchronize-kserve-manifests-${COMMIT?}}
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 MANIFESTS_DIR=$(dirname $SCRIPT_DIR)

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+@ -1,88 +0,0 @@
 
 # This script aims at helping create a PR to update the manifests of the
 # knative.
@@ -66,7 +67,7 @@ $ISTIOCTL profile dump default > profile.yaml
 
 # cd $ISTIO_NEW
 # export PATH="$MANIFESTS_DIR/scripts:$PATH"
-$ISTIOCTL manifest generate -f profile.yaml -f profile-overlay.yaml > dump.yaml
+$ISTIOCTL manifest generate -f profile.yaml -f profile-overlay.yaml --set components.cni.enabled=true --set components.cni.namespace=kube-system > dump.yaml
 ./split-istio-packages -f dump.yaml
 mv $ISTIO_NEW/crd.yaml $ISTIO_NEW/istio-crds/base
 mv $ISTIO_NEW/install.yaml $ISTIO_NEW/istio-install/base
@@ -77,9 +78,15 @@ if [ -n "$(git status --porcelain)" ]; then
   echo "WARNING: You have uncommitted changes"
 fi
 
+# Update README.md to synchronize with the upgraded Istio version
+echo "Updating README..."
+SRC_TXT="\[.*\](https://github.com/istio/istio/releases/tag/.*)"
+DST_TXT="\[$COMMIT\](https://github.com/istio/istio/releases/tag/$COMMIT)"
+
+sed -i "s|$SRC_TXT|$DST_TXT|g" "${MANIFESTS_DIR}"/README.md
+
+#Synchronize the updated directory names with other files
 find "$MANIFESTS_DIR" -type f -not -path '*/.git/*' -exec sed -i "s/istio-cni-${CURRENT_VERSION}/istio-cni-${NEW_VERSION}/g" {} +
-
-
 
 echo "Committing the changes..."
 cd "$MANIFESTS_DIR"
